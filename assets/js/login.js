@@ -1,3 +1,10 @@
+// Temp variable to hold the anonymous user data if needed.
+var data = null;
+// Hold a reference to the anonymous current user.
+var anonymousUser = firebase.auth().currentUser;
+console.log("USUARIO ANONIMO")
+console.log(anonymousUser)
+
 // FirebaseUI config.
 var uiConfig = {
   autoUpgradeAnonymousUsers: true,
@@ -58,12 +65,45 @@ var uiConfig = {
       }
       // The credential the user tried to sign in with.
       var cred = error.credential;
+      var anonymousIdToken;
+      var credUserIdToken;
       // Copy data from anonymous user to permanent user and delete anonymous
       // user.
-      // ...
-      console.log("AQUI SE DEBE DE COPIAR TODOS LOS DATOS")
-      // Finish sign-in after data is copied.
-      return firebase.auth().signInWithCredential(cred);
+      // If using Firebase Realtime Database. The anonymous user data has to be
+      // copied to the non-anonymous user.
+      var app = firebase.app();
+      // Save anonymous user data first.
+      return app.database().ref('users/' + firebase.auth().currentUser.uid).once('value').then(
+        function(snapshot) {
+          data = snapshot.val();
+          console.log("INFORMACION DEL USUARIO A GUARDAR")
+          console.log(data)
+          // This will trigger onAuthStateChanged listener which
+          // could trigger a redirect to another page.
+          // Ensure the upgrade flow is not interrupted by that callback
+          // and that this is given enough time to complete before
+          // redirection.
+          return firebase.auth().signInWithCredential(cred);
+        })
+        .then(function(user) {
+          // Original Anonymous Auth instance now has the new user.
+          return app.database().ref('users/' + user.uid).set(data);
+        })
+        .then(function() {
+          console.log("SE BORRA EL USUARIO ANONIMO")
+          // Delete anonymnous user.
+          return anonymousUser.delete();
+        }).then(function() {
+          console.log("SE BORRA LOS DATOS")
+          // Clear data in case a new user signs in, and the state change
+          // triggers.
+          data = null;
+          // FirebaseUI will reset and the UI cleared when this promise
+          // resolves.
+          // signInSuccessWithAuthResult will not run. Successful sign-in
+          // logic has to be run explicitly.
+          window.location.assign('<url-to-redirect-to-on-success>');
+      });
     },
     signInSuccessWithAuthResult: function(authResult, redirectUrl) {
       // User successfully signed in.
@@ -75,11 +115,6 @@ var uiConfig = {
   }
 };
 
-
-// Temp variable to hold the anonymous user data if needed.
-var data = null;
-// Hold a reference to the anonymous current user.
-var anonymousUser = firebase.auth().currentUser;
 
 // Initialize the FirebaseUI Widget using Firebase.
 var ui = new firebaseui.auth.AuthUI(firebase.auth());
