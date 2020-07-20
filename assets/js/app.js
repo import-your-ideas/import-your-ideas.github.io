@@ -248,6 +248,7 @@ firebase.auth().onAuthStateChanged((user)=>{
 			uid = user.uid;
 		}
 		let firebaseRefKey = firebase.database().ref('users').child(uid);
+		// TODO: Que compruebe si existe el usuario, si no que cree uno con la sesion actual
 		firebaseRefKey.on('value', function(dataSnapShot) {
 			document.getElementById("userPfFullName").innerHTML = dataSnapShot.val().userFullName;
 			document.getElementById("userPfSurname").innerHTML = dataSnapShot.val().userSurname;
@@ -320,6 +321,7 @@ function saveProfile(){
 
 		firebase.database().ref().update(updates, function(error) {
 			if(error) {
+				//TODO: Checkear el error y mostrar enlace a logueo si no esta logueado
 				swal.fire({
 					type: 'error',
 					title: 'Error on Update or Create',
